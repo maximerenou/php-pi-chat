@@ -1,0 +1,21 @@
+{
+    "name": "maximerenou/pi-chat",
+    "description": "Pi client",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "MaximeRenou\\PiChat\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Maxime Renou",
+            "email": "contact@maximerenou.fr"
+        }
+    ],
+    "require": {
+        "php": ">=7.1",
+        "ext-curl": "*",
+        "eislambey/eventsource": "^0.1.0"
+    }
+}
