@@ -7,6 +7,10 @@
 
 This is an unofficial PHP client for **Pi** chatbot (from **Inflection AI**). It doesn't require authentication.
 
+> This package isn't actively maintained and may be unstable due Inflection AI's Cloudflare configuration.
+
+> This package is stricly meant for educational purpose. Use at your own risks.
+
 ## Installation
 
     composer require maximerenou/pi-chat
@@ -33,8 +37,6 @@ $answer = $conversation->ask(new Prompt("Hello World"));
 
 <details>
   <summary>Real-time / progressive answer</summary>
-
-> Pi tends to send the whole message in one shot so this can be useless.
 
 You may pass a function as second argument to get real-time progression:
 
@@ -75,4 +77,4 @@ The code throws exceptions when it receives an error from Pi. You can therefore 
 
 #### Disclaimer
 
-This code is for educational purpose only. Using Pi outside heypi.com may violate Inflection AI terms.
+This code is for educational purpose only. Using Pi outside pi.ai may violate Inflection AI terms.

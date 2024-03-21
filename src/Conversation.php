@@ -8,6 +8,7 @@ use EventSource\EventSource;
 class Conversation
 {
     // Conversation IDs
+    public $conversation_id;
     public $cookie;
 
     // Conversation data
@@ -20,16 +21,23 @@ class Conversation
         if (is_array($identifiers) && ! empty($identifiers['cookie']))
             $this->cookie = $identifiers['cookie'];
 
-        if (! is_array($identifiers))
+        if (is_array($identifiers) && ! empty($identifiers['conversation_id']))
+            $this->conversation_id = $identifiers['conversation_id'];
+
+        if (! is_array($identifiers)) {
             $identifiers = $this->initConversation();
+            Tools::debug("initConversation identifiers", $identifiers);
+        }
 
         $this->cookie = $identifiers['cookie'];
+        $this->conversation_id = $identifiers['conversation_id'];
     }
 
     public function getIdentifiers()
     {
         return [
-            'cookie' => $this->cookie
+            'cookie' => $this->cookie,
+            'conversation_id' => $this->conversation_id,
         ];
     }
 
@@ -38,29 +46,28 @@ class Conversation
         $headers = [
             'method: POST',
             'accept: application/json',
-            'x-api-version: 2',
-            "referer: https://heypi.com/talk",
+            'X-Api-Version: 3',
+            "referer: https://pi.ai/onboarding",
             'content-type: application/json',
         ];
 
         if (! empty($this->cookie)) {
-            $headers[] = "cookie: __Host-session={$this->cookie}";
+            $headers[] = "cookie: {$this->cookie}";
         }
 
         $data = json_encode([]);
 
-        list($data, $request, $url, $cookies) = Tools::request("https://heypi.com/api/chat/start", $headers, $data, true);
+        list($data, $request, $url, $cookies, $cookie_string) = Tools::request("https://pi.ai/api/chat/start", $headers, $data, true);
         $data = json_decode($data, true);
 
-        if (! empty($cookies['__Host-session'])) {
-            $this->cookie = $cookies['__Host-session'];
-        }
+        Tools::debug("initConversation result", $data);
 
-        if (! is_array($data) || empty($data['latestMessage']))
+        if (! is_array($data) || empty($data['mainConversation']))
             throw new \Exception("Failed to init conversation");
 
         return [
-            'cookie' => $this->cookie
+            'conversation_id' => $data['mainConversation']['sid'],
+            'cookie' => $cookie_string,
         ];
     }
 
@@ -68,38 +75,55 @@ class Conversation
     {
         $this->current_text = '';
 
-        $es = new EventSource("https://heypi.com/api/chat");
+        $es = new EventSource("https://pi.ai/api/chat");
 
-        $data = ['text' => $message->text];
+        $data = [
+            'conversation' => $this->conversation_id,
+            'text' => $message->text
+        ];
+
+        Tools::debug("ask", $data);
 
         $es->setCurlOptions([
             CURLOPT_HTTPHEADER => [
                 'method: POST',
-                'accept: text/event-stream',
-                'Accept-Encoding: gzip, deflate, br',
-                "referer: https://heypi.com/talk",
-                'content-type: application/json',
-                "cookie: __Host-session={$this->cookie}"
+                'Accept: text/event-stream',
+                'Accept-Encoding: gzip, deflate, br, zstd',
+                'Accept-Language: en-US;q=0.9,en;q=0.8',
+                "Referer: https://pi.ai/discover",
+                "Origin: https://pi.ai",
+                'Content-Type: application/json',
+                'X-Api-Version: 3',
+                "Cookie: {$this->cookie}",
+                "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
             ],
             CURLOPT_POST => 1,
             CURLOPT_POSTFIELDS => json_encode($data)
         ]);
 
-        $es->onMessage(function (Event $event) use (&$callback) {
-            $message = $this->handlePacket($event->data);
+        $packets = [];
 
-            if ($message === false || empty($message['text']))
-                return;
+        $es->onMessage(function (Event $event) use (&$callback, &$packets) {
+            $packets[] = $event->data;
 
-            $tokens = substr($message['text'], strlen($this->current_text));
-            $this->current_text = $message['text'];
+            $this->handlePacket($event->data, function ($message) use (&$callback) {
+                if ($message === false || empty($message['text']))
+                    return;
 
-            if (! is_null($callback)) {
-                $callback($this->current_text, $tokens);
-            }
+                $this->current_text .= $message['text'];
+
+                if (! is_null($callback)) {
+                    $callback($this->current_text, $message['text']);
+                }
+            });
         });
 
-        @$es->connect();
+        try {
+            $es->connect();
+        }
+        catch (\Exception $exception) {
+            Tools::debug("Failed to connect", $exception->getMessage());
+        }
 
         // Handle abort
         if (empty($this->current_text)) {
@@ -111,22 +135,22 @@ class Conversation
             }
         }
 
+        Tools::debug("Packets", $packets);
+
         return $this->current_text;
     }
 
-    protected function handlePacket($raw)
+    protected function handlePacket($raw, $callback)
     {
-        if (! preg_match('/(\{"text".+\})/', $raw, $matches)) {
-            return false;
+        $packets = Tools::splitJsonStrings($raw);
+
+        foreach ($packets as $packet) {
+            $data = json_decode($packet, true);
+
+            if ($data) {
+                $callback($data);
+            }
         }
-
-        $data = json_decode($matches[1], true);
-
-        if (! $data) {
-            return false;
-        }
-
-        return $data;
     }
 
     public function ended()

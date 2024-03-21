@@ -21,6 +21,10 @@ while (! $conversation->ended()) {
 
     echo "- ";
 
+    // Example: resume from current conversation identifiers
+    //$identifiers = $conversation->getIdentifiers();
+    //$conversation = $chatbot->resumeConversation($identifiers);
+
     try {
         $full_answer = $conversation->ask($prompt, function ($answer, $tokens) {
             echo $tokens;

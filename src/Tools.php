@@ -8,8 +8,13 @@ class Tools
 
     public static function debug($message, $data = null)
     {
-        if (self::$debug)
-            echo "[DEBUG] $message\n";
+        if (self::$debug) {
+            echo "[DEBUG] $message" . PHP_EOL;
+
+            if (! empty($data)) {
+                echo "[DEBUG DATA] " . print_r($data, true) . PHP_EOL;
+            }
+        }
     }
 
     public static function request($url, $headers = [], $data = null, $return_request = false)
@@ -22,7 +27,7 @@ class Tools
         curl_setopt($request, CURLOPT_HTTPHEADER, array_merge([
             'accept-language: en-US,en;q=0.9',
             'user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36',
-            "origin: https://heypi.com",
+            "origin: https://pi.ai",
         ], $headers));
 
         if (! is_null($data)) {
@@ -55,9 +60,43 @@ class Tools
             self::debug("Cookies: " . implode(',', array_keys($cookies)));
             self::debug("Body: $body");
 
-            return [$body, $request, $url, $cookies];
+            return [$body, $request, $url, $cookies, implode(';', $matches[1])];
         }
 
         return $data;
+    }
+
+    public static function splitJsonStrings($jsonString) 
+    {
+        // Dear ChatGPT, thank you for this code snippet.
+        $results = [];
+        $depth = 0;
+        $str = '';
+        $inString = false;
+
+        for ($i = 0; $i < strlen($jsonString); $i++) {
+            $char = $jsonString[$i];
+
+            if ($char === '"' && ($i === 0 || $jsonString[$i - 1] !== '\\')) {
+                $inString = ! $inString;
+            }
+
+            $str .= $char;
+
+            if (! $inString) {
+                if ($char === '{') {
+                    $depth++;
+                } elseif ($char === '}') {
+                    $depth--;
+                }
+            }
+
+            if ($depth === 0 && ! $inString) {
+                $results[] = trim($str);
+                $str = '';
+            }
+        }
+
+        return $results;
     }
 }
