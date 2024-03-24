@@ -7,7 +7,7 @@
 
 This is an unofficial PHP client for **Pi** chatbot (from **Inflection AI**). It doesn't require authentication.
 
-> This package isn't actively maintained and may be unstable due Inflection AI's Cloudflare configuration.
+> This package isn't actively maintained and may be unstable due to Inflection AI's Cloudflare configuration.
 
 > This package is stricly meant for educational purpose. Use at your own risks.
 
@@ -17,7 +17,7 @@ This is an unofficial PHP client for **Pi** chatbot (from **Inflection AI**). It
 
 ## Demo
 
-Run `examples/chat.php` to test it.
+Clone this repo, run `composer install` and run `examples/chat.php` to test it.
 
 ![Prompt Demo](examples/demo.gif)
 
